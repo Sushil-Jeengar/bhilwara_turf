@@ -13,6 +13,9 @@ class TurfModel {
   final List<String> images;
   final bool isPopular;
   final String discount;
+  final String distance;
+  final String availability;
+  final String sportFormat;
 
   TurfModel({
     required this.id,
@@ -29,6 +32,9 @@ class TurfModel {
     required this.images,
     this.isPopular = false,
     this.discount = '',
+    this.distance = '',
+    this.availability = '',
+    this.sportFormat = '',
   });
 
   static List<TurfModel> getDummyTurfs() {
@@ -48,6 +54,9 @@ class TurfModel {
         images: ['turf1.jpg', 'turf1_2.jpg', 'turf1_3.jpg'],
         isPopular: true,
         discount: '10% OFF',
+        distance: '1.2 km',
+        availability: 'AVAILABLE NOW',
+        sportFormat: 'Football • 5v5, 7v7',
       ),
       TurfModel(
         id: '2',
@@ -63,6 +72,9 @@ class TurfModel {
         closeTime: '23:00',
         images: ['turf2.jpg', 'turf2_2.jpg'],
         isPopular: true,
+        distance: '2.5 km',
+        availability: 'AVAILABLE NOW',
+        sportFormat: 'Multi-sport • Indoor',
       ),
       TurfModel(
         id: '3',
@@ -78,6 +90,9 @@ class TurfModel {
         closeTime: '23:00',
         images: ['badminton1.jpg'],
         isPopular: true,
+        distance: '3.8 km',
+        availability: 'HIGH DEMAND',
+        sportFormat: 'Badminton • Indoor Court',
       ),
       TurfModel(
         id: '4',
@@ -87,12 +102,15 @@ class TurfModel {
         pricePerHour: 600,
         rating: 4.7,
         reviewCount: 203,
-        description: 'Professional cricket training facility. FIFA-approved 5-a-side football turf with premium facilities.',
+        description: 'Professional cricket training facility with premium practice nets and bowling machines.',
         amenities: ['Practice Nets', 'Bowling Machine', 'Coaching', 'Parking'],
         openTime: '06:00',
         closeTime: '23:00',
         images: ['cricket1.jpg'],
         discount: '15% OFF',
+        distance: '1.8 km',
+        availability: 'AVAILABLE NOW',
+        sportFormat: 'Cricket • Box Cricket',
       ),
       TurfModel(
         id: '5',
@@ -107,6 +125,9 @@ class TurfModel {
         openTime: '06:00',
         closeTime: '23:00',
         images: ['multi1.jpg'],
+        distance: '4.2 km',
+        availability: 'AVAILABLE NOW',
+        sportFormat: 'Multi-sport • Outdoor',
       ),
       TurfModel(
         id: '6',
@@ -123,6 +144,9 @@ class TurfModel {
         images: ['football1.jpg'],
         isPopular: true,
         discount: '5% OFF',
+        distance: '2.1 km',
+        availability: 'HIGH DEMAND',
+        sportFormat: 'Football • 5v5',
       ),
     ];
   }

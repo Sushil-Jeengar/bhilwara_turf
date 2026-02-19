@@ -1,12 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:carousel_slider/carousel_slider.dart';
 import 'package:intl/intl.dart';
-import '../../utils/app_theme.dart';
+import '../../utils/app_colors.dart';
 import '../../models/turf_model.dart';
 
 class TurfDetailsScreen extends StatefulWidget {
   final TurfModel turf;
-
   const TurfDetailsScreen({super.key, required this.turf});
 
   @override
@@ -14,746 +12,378 @@ class TurfDetailsScreen extends StatefulWidget {
 }
 
 class _TurfDetailsScreenState extends State<TurfDetailsScreen> {
-  DateTime selectedDate = DateTime.now();
+  int selectedDateIndex = 0;
   List<String> selectedSlots = [];
-  int currentImageIndex = 0;
+  int selectedSportIndex = 0;
+  bool isFavorite = false;
+  late List<DateTime> availableDates;
+  late List<String> sportOptions;
+
+  @override
+  void initState() {
+    super.initState();
+    availableDates = List.generate(7, (i) => DateTime.now().add(Duration(days: i)));
+    sportOptions = [];
+    for (final sport in widget.turf.sports) {
+      if (sport == 'Football') {
+        sportOptions.addAll(['Football 5v5', 'Football 7v7']);
+      } else {
+        sportOptions.add(sport);
+      }
+    }
+    if (sportOptions.isEmpty) sportOptions.add('General');
+  }
 
   @override
   Widget build(BuildContext context) {
+    final c = AppColors.of(context);
     return Scaffold(
-      backgroundColor: AppTheme.backgroundColor,
-      body: CustomScrollView(
-        slivers: [
-          // App Bar with Image Carousel
-          SliverAppBar(
-            expandedHeight: 300,
-            pinned: true,
-            backgroundColor: AppTheme.backgroundColor,
-            flexibleSpace: FlexibleSpaceBar(
-              background: Stack(
-                children: [
-                  // Image Carousel
-                  CarouselSlider(
-                    options: CarouselOptions(
-                      height: 300,
-                      viewportFraction: 1.0,
-                      onPageChanged: (index, reason) {
-                        setState(() {
-                          currentImageIndex = index;
-                        });
-                      },
-                    ),
-                    items: [1, 2, 3].map((i) {
-                      return Container(
-                        width: double.infinity,
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: [
-                              AppTheme.primaryGreen.withOpacity(0.3),
-                              AppTheme.darkGreen.withOpacity(0.3),
-                            ],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                          ),
-                        ),
-                        child: const Icon(
-                          Icons.sports_soccer,
-                          size: 100,
-                          color: AppTheme.primaryGreen,
-                        ),
-                      );
-                    }).toList(),
-                  ),
-                  
-                  // Gradient Overlay
-                  Positioned(
-                    bottom: 0,
-                    left: 0,
-                    right: 0,
-                    child: Container(
-                      height: 100,
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                          colors: [
-                            Colors.transparent,
-                            Colors.black.withOpacity(0.7),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                  
-                  // Badges
-                  Positioned(
-                    top: 100,
-                    left: 16,
-                    child: Row(
-                      children: [
-                        if (widget.turf.isPopular)
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: AppTheme.accentOrange,
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: const Text(
-                              'POPULAR',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 12,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                        if (widget.turf.discount.isNotEmpty) ...[
-                          const SizedBox(width: 8),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: AppTheme.accentYellow,
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Text(
-                              widget.turf.discount,
-                              style: const TextStyle(
-                                color: Colors.black,
-                                fontSize: 12,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
-                  ),
-                  
-                  // Image Indicators
-                  Positioned(
-                    bottom: 20,
-                    left: 0,
-                    right: 0,
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [1, 2, 3].asMap().entries.map((entry) {
-                        return Container(
-                          width: 8,
-                          height: 8,
-                          margin: const EdgeInsets.symmetric(horizontal: 4),
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: currentImageIndex == entry.key
-                                ? AppTheme.primaryGreen
-                                : Colors.white.withOpacity(0.5),
-                          ),
-                        );
-                      }).toList(),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          
-          // Content
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.all(20),
+      backgroundColor: c.background,
+      body: Column(
+        children: [
+          Expanded(
+            child: SingleChildScrollView(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Turf Info
-                  _buildTurfInfo(),
-                  
-                  const SizedBox(height: 24),
-                  
-                  // Sports Tags
-                  _buildSportsTags(),
-                  
-                  const SizedBox(height: 24),
-                  
-                  // Description
-                  _buildDescription(),
-                  
-                  const SizedBox(height: 24),
-                  
-                  // Amenities
-                  _buildAmenities(),
-                  
-                  const SizedBox(height: 24),
-                  
-                  // Timings
-                  _buildTimings(),
-                  
-                  const SizedBox(height: 24),
-                  
-                  // Date Selection
-                  _buildDateSelection(),
-                  
-                  const SizedBox(height: 24),
-                  
-                  // Time Slots
-                  _buildTimeSlots(),
-                  
-                  const SizedBox(height: 100), // Space for bottom button
+                  _buildHeroImage(c),
+                  _buildTurfInfo(c),
+                  _buildAboutVenue(c),
+                  _buildFeatureGrid(c),
+                  _buildSportSelector(c),
+                  _buildDateTimeSelector(c),
+                  const SizedBox(height: 100),
                 ],
               ),
             ),
           ),
         ],
       ),
-      
-      // Bottom Booking Button
-      bottomNavigationBar: Container(
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          color: AppTheme.cardColor,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.1),
-              blurRadius: 10,
-              offset: const Offset(0, -5),
-            ),
-          ],
-        ),
-        child: SafeArea(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (selectedSlots.isNotEmpty) ...[
-                Text(
-                  '${selectedSlots.length} slot(s) selected',
-                  style: const TextStyle(
-                    color: AppTheme.textSecondary,
-                    fontSize: 14,
-                  ),
+      bottomNavigationBar: _buildBottomBar(c),
+    );
+  }
+
+  Widget _buildHeroImage(AppColors c) {
+    return Stack(
+      children: [
+        Container(
+          height: 280,
+          width: double.infinity,
+          decoration: BoxDecoration(color: c.surfaceVariant),
+          child: Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(24),
+                  decoration: BoxDecoration(color: c.primary.withValues(alpha: 0.1), shape: BoxShape.circle),
+                  child: Icon(Icons.sports_soccer, size: 64, color: c.primary.withValues(alpha: 0.4)),
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 12),
                 Text(
-                  'Total: ₹${(widget.turf.pricePerHour * selectedSlots.length).toInt()}',
-                  style: const TextStyle(
-                    color: AppTheme.primaryGreen,
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
+                  widget.turf.name.toUpperCase(),
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: c.textHint, letterSpacing: 2),
                 ),
-                const SizedBox(height: 16),
               ],
-              SizedBox(
-                width: double.infinity,
-                height: 56,
-                child: ElevatedButton(
-                  onPressed: selectedSlots.isEmpty ? null : _bookSlots,
-                  child: Text(
-                    selectedSlots.isEmpty 
-                        ? 'Select Slots to Book' 
-                        : 'Book Selected Slots',
-                  ),
-                ),
-              ),
+            ),
+          ),
+        ),
+        Positioned(
+          bottom: 0, left: 0, right: 0,
+          child: Container(
+            height: 60,
+            decoration: BoxDecoration(gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Colors.transparent, c.background])),
+          ),
+        ),
+        Positioned(
+          top: MediaQuery.of(context).padding.top + 8, left: 16, right: 16,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              _circleBtn(Icons.arrow_back, c, onTap: () => Navigator.pop(context)),
+              _circleBtn(isFavorite ? Icons.favorite : Icons.favorite_border, c, iconColor: isFavorite ? c.error : null, onTap: () => setState(() => isFavorite = !isFavorite)),
             ],
           ),
         ),
+      ],
+    );
+  }
+
+  Widget _circleBtn(IconData icon, AppColors c, {Color? iconColor, required VoidCallback onTap}) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 40, height: 40,
+        decoration: BoxDecoration(color: c.isDark ? c.overlay : c.surface, shape: BoxShape.circle, boxShadow: [BoxShadow(color: c.shadow, blurRadius: 8)]),
+        child: Icon(icon, color: iconColor ?? c.textPrimary, size: 20),
       ),
     );
   }
 
-  Widget _buildTurfInfo() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Expanded(
-              child: Text(
-                widget.turf.name,
-                style: const TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                  color: AppTheme.textPrimary,
-                ),
-              ),
-            ),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(
-                color: AppTheme.primaryGreen.withOpacity(0.2),
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(
-                    Icons.star,
-                    color: AppTheme.accentYellow,
-                    size: 16,
-                  ),
-                  const SizedBox(width: 4),
-                  Text(
-                    '${widget.turf.rating}',
-                    style: const TextStyle(
-                      color: AppTheme.textPrimary,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-        
-        const SizedBox(height: 8),
-        
-        Row(
-          children: [
-            const Icon(
-              Icons.location_on,
-              color: AppTheme.primaryGreen,
-              size: 18,
-            ),
-            const SizedBox(width: 4),
-            Expanded(
-              child: Text(
-                widget.turf.location,
-                style: const TextStyle(
-                  fontSize: 16,
-                  color: AppTheme.textSecondary,
-                ),
-              ),
-            ),
-          ],
-        ),
-        
-        const SizedBox(height: 16),
-        
-        Row(
-          children: [
-            Text(
-              '₹${widget.turf.pricePerHour}',
-              style: const TextStyle(
-                fontSize: 28,
-                fontWeight: FontWeight.bold,
-                color: AppTheme.primaryGreen,
-              ),
-            ),
-            const Text(
-              '/hour',
-              style: TextStyle(
-                fontSize: 16,
-                color: AppTheme.textSecondary,
-              ),
-            ),
-            const Spacer(),
-            Text(
-              '${widget.turf.reviewCount} reviews',
-              style: const TextStyle(
-                fontSize: 14,
-                color: AppTheme.textSecondary,
-              ),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-
-  Widget _buildSportsTags() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'Available Sports',
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-            color: AppTheme.textPrimary,
-          ),
-        ),
-        const SizedBox(height: 12),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: widget.turf.sports.map((sport) {
-            return Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              decoration: BoxDecoration(
-                color: AppTheme.primaryGreen.withOpacity(0.2),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                  color: AppTheme.primaryGreen.withOpacity(0.5),
-                ),
-              ),
-              child: Text(
-                sport,
-                style: const TextStyle(
-                  color: AppTheme.primaryGreen,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            );
-          }).toList(),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildDescription() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'Description',
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-            color: AppTheme.textPrimary,
-          ),
-        ),
-        const SizedBox(height: 12),
-        Text(
-          widget.turf.description,
-          style: const TextStyle(
-            fontSize: 16,
-            color: AppTheme.textSecondary,
-            height: 1.5,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildAmenities() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'Amenities',
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-            color: AppTheme.textPrimary,
-          ),
-        ),
-        const SizedBox(height: 12),
-        Wrap(
-          spacing: 12,
-          runSpacing: 12,
-          children: widget.turf.amenities.map((amenity) {
-            return Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(
-                  Icons.check_circle,
-                  color: AppTheme.primaryGreen,
-                  size: 16,
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  amenity,
-                  style: const TextStyle(
-                    color: AppTheme.textPrimary,
-                    fontSize: 14,
-                  ),
-                ),
-              ],
-            );
-          }).toList(),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildTimings() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppTheme.cardColor,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
+  Widget _buildTurfInfo(AppColors c) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(
-            Icons.access_time,
-            color: AppTheme.primaryGreen,
+          Row(
+            children: [
+              Expanded(child: Text(widget.turf.name, style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: c.textPrimary))),
+              const SizedBox(width: 12),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(color: c.ratingStarColor.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(8)),
+                child: Row(mainAxisSize: MainAxisSize.min, children: [
+                  Icon(Icons.star, color: c.ratingStarColor, size: 16),
+                  const SizedBox(width: 4),
+                  Text(widget.turf.rating.toString(), style: TextStyle(color: c.textPrimary, fontSize: 14, fontWeight: FontWeight.w700)),
+                ]),
+              ),
+            ],
           ),
-          const SizedBox(width: 12),
-          const Text(
-            'Open',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-              color: AppTheme.textPrimary,
-            ),
-          ),
-          const SizedBox(width: 8),
-          Text(
-            '${widget.turf.openTime} - ${widget.turf.closeTime}',
-            style: const TextStyle(
-              fontSize: 16,
-              color: AppTheme.textSecondary,
-            ),
-          ),
+          const SizedBox(height: 8),
+          Row(children: [
+            Icon(Icons.location_on, color: c.textSecondary, size: 16),
+            const SizedBox(width: 4),
+            Expanded(child: Text(widget.turf.location, style: TextStyle(fontSize: 14, color: c.textSecondary))),
+            Text(' • ', style: TextStyle(color: c.textHint)),
+            GestureDetector(onTap: () {}, child: Text('Map', style: TextStyle(fontSize: 14, color: c.accent, fontWeight: FontWeight.w600))),
+          ]),
         ],
       ),
     );
   }
 
-  Widget _buildDateSelection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'Select Date',
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-            color: AppTheme.textPrimary,
-          ),
-        ),
-        const SizedBox(height: 12),
-        GestureDetector(
-          onTap: () async {
-            final date = await showDatePicker(
-              context: context,
-              initialDate: selectedDate,
-              firstDate: DateTime.now(),
-              lastDate: DateTime.now().add(const Duration(days: 30)),
-              builder: (context, child) {
-                return Theme(
-                  data: Theme.of(context).copyWith(
-                    colorScheme: const ColorScheme.dark(
-                      primary: AppTheme.primaryGreen,
-                      surface: AppTheme.cardColor,
-                    ),
-                  ),
-                  child: child!,
-                );
-              },
-            );
-            if (date != null) {
-              setState(() {
-                selectedDate = date;
-                selectedSlots.clear(); // Clear selected slots when date changes
-              });
-            }
-          },
-          child: Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: AppTheme.cardColor,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: AppTheme.primaryGreen.withOpacity(0.3),
-              ),
-            ),
-            child: Row(
-              children: [
-                const Icon(Icons.calendar_today, color: AppTheme.primaryGreen),
-                const SizedBox(width: 12),
-                Text(
-                  DateFormat('EEEE, dd MMM yyyy').format(selectedDate),
-                  style: const TextStyle(
-                    color: AppTheme.textPrimary,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const Spacer(),
-                const Icon(Icons.keyboard_arrow_down, color: AppTheme.primaryGreen),
-              ],
-            ),
-          ),
-        ),
-      ],
+  Widget _buildAboutVenue(AppColors c) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text('About Venue', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: c.textPrimary)),
+        const SizedBox(height: 10),
+        Text(widget.turf.description, style: TextStyle(fontSize: 14, color: c.textSecondary, height: 1.6)),
+      ]),
     );
   }
 
-  Widget _buildTimeSlots() {
-    final timeSlots = TurfModel.getTimeSlots();
-    
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'Select Time Slots',
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-            color: AppTheme.textPrimary,
-          ),
-        ),
-        const SizedBox(height: 12),
-        GridView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 3,
-            childAspectRatio: 2.5,
-            crossAxisSpacing: 8,
-            mainAxisSpacing: 8,
-          ),
-          itemCount: timeSlots.length,
-          itemBuilder: (context, index) {
-            final slot = timeSlots[index];
-            final isSelected = selectedSlots.contains(slot);
-            final isBooked = index % 5 == 0; // Simulate some booked slots
-            
-            return GestureDetector(
-              onTap: isBooked ? null : () {
-                setState(() {
-                  if (isSelected) {
-                    selectedSlots.remove(slot);
-                  } else {
-                    selectedSlots.add(slot);
-                  }
-                });
-              },
-              child: Container(
-                decoration: BoxDecoration(
-                  color: isBooked 
-                      ? AppTheme.textSecondary.withOpacity(0.3)
-                      : isSelected 
-                          ? AppTheme.primaryGreen 
-                          : AppTheme.cardColor,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(
-                    color: isBooked 
-                        ? AppTheme.textSecondary
-                        : isSelected 
-                            ? AppTheme.primaryGreen 
-                            : AppTheme.primaryGreen.withOpacity(0.3),
-                  ),
-                ),
-                child: Center(
-                  child: Text(
-                    slot,
-                    style: TextStyle(
-                      color: isBooked 
-                          ? AppTheme.textSecondary
-                          : isSelected 
-                              ? Colors.white 
-                              : AppTheme.textPrimary,
-                      fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-                      fontSize: 14,
+  Widget _buildFeatureGrid(AppColors c) {
+    final features = [
+      {'icon': Icons.grid_on, 'label': 'Dimensions', 'value': '90 x 50 ft', 'color': c.primary},
+      {'icon': Icons.grass, 'label': 'Surface', 'value': 'Artificial Turf', 'color': c.accentWarm},
+      {'icon': Icons.checkroom, 'label': 'Facility', 'value': widget.turf.amenities.isNotEmpty ? widget.turf.amenities.first : 'Basic', 'color': c.success},
+      {'icon': Icons.local_parking, 'label': 'Parking', 'value': widget.turf.amenities.contains('Parking') ? 'Free Spot' : 'Limited', 'color': c.accent},
+    ];
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+      child: GridView.count(
+        crossAxisCount: 2, shrinkWrap: true, physics: const NeverScrollableScrollPhysics(),
+        crossAxisSpacing: 12, mainAxisSpacing: 12, childAspectRatio: 2.2,
+        children: features.map((f) => Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(color: c.surface, borderRadius: BorderRadius.circular(14), border: Border.all(color: c.cardBorder)),
+          child: Row(children: [
+            Container(
+              width: 36, height: 36,
+              decoration: BoxDecoration(color: (f['color'] as Color).withValues(alpha: 0.15), borderRadius: BorderRadius.circular(8)),
+              child: Icon(f['icon'] as IconData, color: f['color'] as Color, size: 18),
+            ),
+            const SizedBox(width: 10),
+            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisAlignment: MainAxisAlignment.center, children: [
+              Text(f['label'] as String, style: TextStyle(fontSize: 11, color: c.textHint)),
+              const SizedBox(height: 2),
+              Text(f['value'] as String, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: c.textPrimary)),
+            ])),
+          ]),
+        )).toList(),
+      ),
+    );
+  }
+
+  Widget _buildSportSelector(AppColors c) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text('Select Sport', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: c.textPrimary)),
+        const SizedBox(height: 14),
+        SizedBox(
+          height: 40,
+          child: ListView.builder(
+            scrollDirection: Axis.horizontal, itemCount: sportOptions.length,
+            itemBuilder: (context, index) {
+              final isSelected = selectedSportIndex == index;
+              return Padding(
+                padding: const EdgeInsets.only(right: 10),
+                child: GestureDetector(
+                  onTap: () => setState(() => selectedSportIndex = index),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 18),
+                    decoration: BoxDecoration(
+                      color: isSelected ? c.primary : Colors.transparent,
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: isSelected ? c.primary : c.cardBorder),
                     ),
+                    alignment: Alignment.center,
+                    child: Row(mainAxisSize: MainAxisSize.min, children: [
+                      if (isSelected) ...[const Icon(Icons.check, color: Colors.white, size: 14), const SizedBox(width: 6)],
+                      Text(sportOptions[index], style: TextStyle(color: isSelected ? Colors.white : c.textSecondary, fontSize: 14, fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal)),
+                    ]),
                   ),
                 ),
-              ),
-            );
-          },
+              );
+            },
+          ),
         ),
-        
+      ]),
+    );
+  }
+
+  Widget _buildDateTimeSelector(AppColors c) {
+    final timeSlots = ['05:00 PM', '06:00 PM', '07:00 PM', '08:00 PM', '09:00 PM', '10:00 PM'];
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 0, 20, 0),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text('Select Date & Time', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: c.textPrimary)),
         const SizedBox(height: 16),
-        
-        // Legend
-        Row(
-          children: [
-            _buildLegendItem(AppTheme.primaryGreen, 'Selected'),
-            const SizedBox(width: 16),
-            _buildLegendItem(AppTheme.cardColor, 'Available'),
-            const SizedBox(width: 16),
-            _buildLegendItem(AppTheme.textSecondary.withOpacity(0.3), 'Booked'),
-          ],
+        SizedBox(
+          height: 72,
+          child: ListView.builder(
+            scrollDirection: Axis.horizontal, itemCount: availableDates.length,
+            itemBuilder: (context, index) {
+              final date = availableDates[index];
+              final isSelected = selectedDateIndex == index;
+              return Padding(
+                padding: const EdgeInsets.only(right: 10),
+                child: GestureDetector(
+                  onTap: () => setState(() { selectedDateIndex = index; selectedSlots.clear(); }),
+                  child: Container(
+                    width: 56,
+                    decoration: BoxDecoration(
+                      color: isSelected ? c.primary : Colors.transparent,
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: isSelected ? c.primary : c.cardBorder),
+                    ),
+                    child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+                      Text(DateFormat('E').format(date).toUpperCase(), style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: isSelected ? Colors.white : c.textSecondary)),
+                      const SizedBox(height: 4),
+                      Text(date.day.toString(), style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: isSelected ? Colors.white : c.textPrimary)),
+                    ]),
+                  ),
+                ),
+              );
+            },
+          ),
         ),
-      ],
+        const SizedBox(height: 20),
+        Wrap(
+          spacing: 10, runSpacing: 10,
+          children: timeSlots.map((slot) {
+            final isSelected = selectedSlots.contains(slot);
+            final isBooked = slot == '05:00 PM';
+            return GestureDetector(
+              onTap: isBooked ? null : () => setState(() { isSelected ? selectedSlots.remove(slot) : selectedSlots.add(slot); }),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: isBooked ? c.divider : isSelected ? c.primary : c.cardBorder, width: isSelected ? 1.5 : 1),
+                  color: isBooked ? c.surfaceVariant.withValues(alpha: 0.5) : null,
+                ),
+                child: Text(
+                  slot,
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                    color: isBooked ? c.textHint : isSelected ? c.primary : c.textSecondary,
+                    decoration: isBooked ? TextDecoration.lineThrough : null,
+                  ),
+                ),
+              ),
+            );
+          }).toList(),
+        ),
+      ]),
     );
   }
 
-  Widget _buildLegendItem(Color color, String label) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          width: 12,
-          height: 12,
-          decoration: BoxDecoration(
-            color: color,
-            borderRadius: BorderRadius.circular(2),
+  Widget _buildBottomBar(AppColors c) {
+    final totalPrice = widget.turf.pricePerHour * (selectedSlots.isEmpty ? 1 : selectedSlots.length);
+    return Container(
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
+      decoration: BoxDecoration(
+        color: c.bottomBarBg,
+        border: Border(top: BorderSide(color: c.divider)),
+        boxShadow: [BoxShadow(color: c.shadow, blurRadius: 10, offset: const Offset(0, -4))],
+      ),
+      child: SafeArea(
+        child: Row(children: [
+          Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text('Total Price', style: TextStyle(fontSize: 12, color: c.textSecondary)),
+            const SizedBox(height: 2),
+            RichText(text: TextSpan(children: [
+              TextSpan(text: '₹${totalPrice.toInt()}', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: c.textPrimary)),
+              TextSpan(text: ' / hour', style: TextStyle(fontSize: 13, color: c.textSecondary)),
+            ])),
+          ]),
+          const SizedBox(width: 20),
+          Expanded(
+            child: GestureDetector(
+              onTap: selectedSlots.isEmpty ? null : _bookSlots,
+              child: Container(
+                height: 52,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(colors: selectedSlots.isEmpty ? [c.surfaceVariant, c.surfaceVariant] : [c.primary, c.primaryDark]),
+                  borderRadius: BorderRadius.circular(14),
+                  boxShadow: selectedSlots.isNotEmpty ? [BoxShadow(color: c.primary.withValues(alpha: 0.3), blurRadius: 12, offset: const Offset(0, 4))] : null,
+                ),
+                child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                  Text(selectedSlots.isEmpty ? 'Select a Slot' : 'Book Now', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: selectedSlots.isEmpty ? c.textHint : Colors.white)),
+                  if (selectedSlots.isNotEmpty) ...[const SizedBox(width: 8), const Icon(Icons.arrow_forward, color: Colors.white, size: 18)],
+                ]),
+              ),
+            ),
           ),
-        ),
-        const SizedBox(width: 4),
-        Text(
-          label,
-          style: const TextStyle(
-            color: AppTheme.textSecondary,
-            fontSize: 12,
-          ),
-        ),
-      ],
+        ]),
+      ),
     );
   }
 
   void _bookSlots() {
+    final c = AppColors.of(context);
+    final date = availableDates[selectedDateIndex];
     showDialog(
       context: context,
-      builder: (context) {
-        return AlertDialog(
-          backgroundColor: AppTheme.cardColor,
-          title: const Text(
-            'Booking Confirmation',
-            style: TextStyle(color: AppTheme.textPrimary),
+      builder: (ctx) => AlertDialog(
+        backgroundColor: c.surface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text('Booking Confirmation', style: TextStyle(color: c.textPrimary)),
+        content: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(widget.turf.name, style: TextStyle(color: c.textPrimary, fontWeight: FontWeight.w600)),
+          const SizedBox(height: 12),
+          _confirmRow(Icons.calendar_today, DateFormat('dd MMM yyyy').format(date), c),
+          const SizedBox(height: 8),
+          _confirmRow(Icons.access_time, selectedSlots.join(', '), c),
+          const SizedBox(height: 8),
+          _confirmRow(Icons.payments, '₹${(widget.turf.pricePerHour * selectedSlots.length).toInt()}', c, valueColor: c.primary),
+          const SizedBox(height: 16),
+          Text('Booking confirmation will be sent to your phone', style: TextStyle(color: c.textHint, fontSize: 12)),
+        ]),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: Text('Cancel', style: TextStyle(color: c.textSecondary))),
+          ElevatedButton(
+            onPressed: () { Navigator.pop(ctx); ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: const Text('Booking confirmed!'), backgroundColor: c.primary)); Navigator.pop(context); },
+            style: ElevatedButton.styleFrom(backgroundColor: c.primary, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+            child: const Text('Confirm'),
           ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Turf: ${widget.turf.name}',
-                style: const TextStyle(color: AppTheme.textPrimary),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Date: ${DateFormat('dd MMM yyyy').format(selectedDate)}',
-                style: const TextStyle(color: AppTheme.textSecondary),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Slots: ${selectedSlots.join(', ')}',
-                style: const TextStyle(color: AppTheme.textSecondary),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Total: ₹${(widget.turf.pricePerHour * selectedSlots.length).toInt()}',
-                style: const TextStyle(
-                  color: AppTheme.primaryGreen,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 16),
-              const Text(
-                'Booking confirmation will be sent to your phone',
-                style: TextStyle(
-                  color: AppTheme.textSecondary,
-                  fontSize: 12,
-                ),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text(
-                'Cancel',
-                style: TextStyle(color: AppTheme.textSecondary),
-              ),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Booking confirmed! Check your phone for details.'),
-                    backgroundColor: AppTheme.primaryGreen,
-                  ),
-                );
-                Navigator.pop(context);
-              },
-              child: const Text('Confirm Booking'),
-            ),
-          ],
-        );
-      },
+        ],
+      ),
     );
+  }
+
+  Widget _confirmRow(IconData icon, String text, AppColors c, {Color? valueColor}) {
+    return Row(children: [
+      Icon(icon, size: 16, color: c.accent),
+      const SizedBox(width: 8),
+      Expanded(child: Text(text, style: TextStyle(color: valueColor ?? c.textSecondary, fontSize: 14, fontWeight: valueColor != null ? FontWeight.bold : FontWeight.normal))),
+    ]);
   }
 }

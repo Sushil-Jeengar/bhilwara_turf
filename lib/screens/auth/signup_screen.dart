@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../../utils/app_theme.dart';
+import '../../utils/app_colors.dart';
 
 class SignupScreen extends StatefulWidget {
   const SignupScreen({super.key});
@@ -10,13 +10,11 @@ class SignupScreen extends StatefulWidget {
 }
 
 class _SignupScreenState extends State<SignupScreen> {
-  final _formKey = GlobalKey<FormState>();
-  final _nameController = TextEditingController();
-  final _phoneController = TextEditingController();
-  final _emailController = TextEditingController();
-  final _otpController = TextEditingController();
-  bool _isOtpSent = false;
-  bool _isLoading = false;
+  final TextEditingController _nameController = TextEditingController();
+  final TextEditingController _phoneController = TextEditingController();
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _otpController = TextEditingController();
+  bool _otpSent = false;
 
   @override
   void dispose() {
@@ -28,258 +26,127 @@ class _SignupScreenState extends State<SignupScreen> {
   }
 
   Future<void> _sendOtp() async {
-    if (_formKey.currentState!.validate()) {
-      setState(() {
-        _isLoading = true;
-      });
-
-      // Simulate OTP sending
-      await Future.delayed(const Duration(seconds: 2));
-
-      setState(() {
-        _isLoading = false;
-        _isOtpSent = true;
-      });
-
+    if (_nameController.text.isEmpty || _phoneController.text.length < 10) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('OTP sent to your phone number'),
-          backgroundColor: AppTheme.primaryGreen,
-        ),
+        const SnackBar(content: Text('Please fill all required fields')),
       );
+      return;
     }
+    setState(() => _otpSent = true);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: const Text('OTP sent successfully!'), backgroundColor: AppColors.of(context).primary),
+    );
   }
 
   Future<void> _verifyOtpAndSignup() async {
-    if (_otpController.text.length == 6) {
-      setState(() {
-        _isLoading = true;
-      });
-
-      // Simulate OTP verification and signup
-      await Future.delayed(const Duration(seconds: 2));
-
-      // Save user data
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setBool('isLoggedIn', true);
-      await prefs.setString('userName', _nameController.text);
-      await prefs.setString('userPhone', _phoneController.text);
-      await prefs.setString('userEmail', _emailController.text);
-
-      setState(() {
-        _isLoading = false;
-      });
-
-      if (mounted) {
-        Navigator.pushReplacementNamed(context, '/main');
-      }
-    } else {
+    if (_otpController.text.length < 6) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please enter valid 6-digit OTP'),
-          backgroundColor: Colors.red,
-        ),
+        const SnackBar(content: Text('Please enter a valid 6-digit OTP')),
       );
+      return;
     }
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('isLoggedIn', true);
+    await prefs.setString('userName', _nameController.text);
+    await prefs.setString('userPhone', _phoneController.text);
+    await prefs.setString('userEmail', _emailController.text);
+    if (!mounted) return;
+    Navigator.pushNamedAndRemoveUntil(context, '/main', (route) => false);
   }
 
   @override
   Widget build(BuildContext context) {
+    final c = AppColors.of(context);
     return Scaffold(
-      backgroundColor: AppTheme.backgroundColor,
+      backgroundColor: c.background,
       appBar: AppBar(
-        title: const Text('Create Account'),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => Navigator.pop(context),
-        ),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        leading: IconButton(icon: Icon(Icons.arrow_back, color: c.textPrimary), onPressed: () => Navigator.pop(context)),
       ),
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Form(
-            key: _formKey,
-            child: SingleChildScrollView(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const SizedBox(height: 20),
-                  
-                  // Header
-                  const Text(
-                    'Join BhilwaraTurf',
-                    style: TextStyle(
-                      fontSize: 28,
-                      fontWeight: FontWeight.bold,
-                      color: AppTheme.textPrimary,
-                    ),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const SizedBox(height: 16),
+              Text('Create Account', style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: c.textPrimary)),
+              const SizedBox(height: 8),
+              Text('Sign up to start booking turfs', style: TextStyle(fontSize: 15, color: c.textSecondary)),
+              const SizedBox(height: 32),
+
+              _buildField('Full Name', _nameController, Icons.person_outline, 'Enter your name', c),
+              const SizedBox(height: 16),
+              _buildField('Phone Number', _phoneController, Icons.phone_outlined, 'Enter phone number', c, keyboard: TextInputType.phone),
+              const SizedBox(height: 16),
+              _buildField('Email (Optional)', _emailController, Icons.email_outlined, 'Enter your email', c, keyboard: TextInputType.emailAddress),
+
+              if (_otpSent) ...[
+                const SizedBox(height: 16),
+                Text('OTP', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: c.textPrimary)),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: _otpController,
+                  keyboardType: TextInputType.number,
+                  maxLength: 6,
+                  style: TextStyle(color: c.textPrimary, fontSize: 16, letterSpacing: 8),
+                  textAlign: TextAlign.center,
+                  decoration: InputDecoration(
+                    hintText: '------', hintStyle: TextStyle(color: c.textHint, letterSpacing: 8), counterText: '',
+                    filled: true, fillColor: c.inputFill,
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide(color: c.cardBorder)),
+                    enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide(color: c.cardBorder)),
+                    focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide(color: c.primary, width: 1.5)),
                   ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    'Create your account to start booking',
-                    style: TextStyle(
-                      fontSize: 16,
-                      color: AppTheme.textSecondary,
-                    ),
-                  ),
-                  
-                  const SizedBox(height: 40),
-                  
-                  // Name Field
-                  const Text(
-                    'Full Name',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: AppTheme.textPrimary,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  TextFormField(
-                    controller: _nameController,
-                    enabled: !_isOtpSent,
-                    decoration: const InputDecoration(
-                      hintText: 'Enter your full name',
-                      prefixIcon: Icon(Icons.person, color: AppTheme.primaryGreen),
-                    ),
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Please enter your name';
-                      }
-                      return null;
-                    },
-                  ),
-                  
-                  const SizedBox(height: 20),
-                  
-                  // Phone Number Field
-                  const Text(
-                    'Phone Number',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: AppTheme.textPrimary,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  TextFormField(
-                    controller: _phoneController,
-                    keyboardType: TextInputType.phone,
-                    enabled: !_isOtpSent,
-                    decoration: const InputDecoration(
-                      hintText: 'Enter your phone number',
-                      prefixIcon: Icon(Icons.phone, color: AppTheme.primaryGreen),
-                    ),
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Please enter your phone number';
-                      }
-                      if (value.length != 10) {
-                        return 'Please enter valid 10-digit phone number';
-                      }
-                      return null;
-                    },
-                  ),
-                  
-                  const SizedBox(height: 20),
-                  
-                  // Email Field
-                  const Text(
-                    'Email Address',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: AppTheme.textPrimary,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  TextFormField(
-                    controller: _emailController,
-                    keyboardType: TextInputType.emailAddress,
-                    enabled: !_isOtpSent,
-                    decoration: const InputDecoration(
-                      hintText: 'Enter your email address',
-                      prefixIcon: Icon(Icons.email, color: AppTheme.primaryGreen),
-                    ),
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Please enter your email';
-                      }
-                      if (!value.contains('@')) {
-                        return 'Please enter valid email address';
-                      }
-                      return null;
-                    },
-                  ),
-                  
-                  const SizedBox(height: 24),
-                  
-                  // OTP Field (shown after OTP is sent)
-                  if (_isOtpSent) ...[
-                    const Text(
-                      'Enter OTP',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: AppTheme.textPrimary,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    TextFormField(
-                      controller: _otpController,
-                      keyboardType: TextInputType.number,
-                      maxLength: 6,
-                      decoration: const InputDecoration(
-                        hintText: 'Enter 6-digit OTP',
-                        prefixIcon: Icon(Icons.security, color: AppTheme.primaryGreen),
-                        counterText: '',
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-                  ],
-                  
-                  // Signup Button
-                  SizedBox(
-                    width: double.infinity,
-                    height: 56,
-                    child: ElevatedButton(
-                      onPressed: _isLoading
-                          ? null
-                          : (_isOtpSent ? _verifyOtpAndSignup : _sendOtp),
-                      child: _isLoading
-                          ? const CircularProgressIndicator(color: Colors.white)
-                          : Text(_isOtpSent ? 'Verify & Create Account' : 'Send OTP'),
-                    ),
-                  ),
-                  
-                  const SizedBox(height: 24),
-                  
-                  // Login Link
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Text(
-                        'Already have an account? ',
-                        style: TextStyle(color: AppTheme.textSecondary),
-                      ),
-                      GestureDetector(
-                        onTap: () => Navigator.pop(context),
-                        child: const Text(
-                          'Login',
-                          style: TextStyle(
-                            color: AppTheme.primaryGreen,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
+                ),
+              ],
+
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity, height: 52,
+                child: ElevatedButton(
+                  onPressed: _otpSent ? _verifyOtpAndSignup : _sendOtp,
+                  style: ElevatedButton.styleFrom(backgroundColor: c.primary, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)), elevation: 0),
+                  child: Text(_otpSent ? 'Verify & Sign Up' : 'Send OTP', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.white)),
+                ),
               ),
-            ),
+
+              const SizedBox(height: 24),
+              Center(
+                child: GestureDetector(
+                  onTap: () => Navigator.pop(context),
+                  child: RichText(
+                    text: TextSpan(children: [
+                      TextSpan(text: 'Already have an account? ', style: TextStyle(color: c.textSecondary, fontSize: 14)),
+                      TextSpan(text: 'Login', style: TextStyle(color: c.primary, fontSize: 14, fontWeight: FontWeight.w600)),
+                    ]),
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       ),
     );
+  }
+
+  Widget _buildField(String label, TextEditingController ctrl, IconData icon, String hint, AppColors c, {TextInputType? keyboard}) {
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Text(label, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: c.textPrimary)),
+      const SizedBox(height: 8),
+      TextField(
+        controller: ctrl, keyboardType: keyboard,
+        style: TextStyle(color: c.textPrimary, fontSize: 16),
+        decoration: InputDecoration(
+          hintText: hint, hintStyle: TextStyle(color: c.textHint),
+          prefixIcon: Icon(icon, color: c.textSecondary),
+          filled: true, fillColor: c.inputFill,
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide(color: c.cardBorder)),
+          enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide(color: c.cardBorder)),
+          focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide(color: c.primary, width: 1.5)),
+        ),
+      ),
+    ]);
   }
 }
