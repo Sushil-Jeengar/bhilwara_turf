@@ -254,12 +254,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
             TextButton(onPressed: () => Navigator.pop(ctx), child: Text('Cancel', style: TextStyle(color: c.textSecondary))),
             ElevatedButton(
               onPressed: () async {
+                final messenger = ScaffoldMessenger.of(context);
                 final prefs = await SharedPreferences.getInstance();
                 await prefs.setString('userName', nameCtrl.text);
                 await prefs.setString('userEmail', emailCtrl.text);
                 setState(() { userName = nameCtrl.text; userEmail = emailCtrl.text; });
+                if (!ctx.mounted) return;
                 Navigator.pop(ctx);
-                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: const Text('Profile updated'), backgroundColor: c.primary));
+                messenger.showSnackBar(SnackBar(content: const Text('Profile updated'), backgroundColor: c.primary));
               },
               style: ElevatedButton.styleFrom(backgroundColor: c.primary, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
               child: const Text('Save'),

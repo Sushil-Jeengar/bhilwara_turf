@@ -1,30 +1,48 @@
-// This is a basic Flutter widget test.
-//
-// To perform an interaction with a widget in your test, use the WidgetTester
-// utility in the flutter_test package. For example, you can send tap and scroll
-// gestures. You can also use WidgetTester to find child widgets in the widget
-// tree, read text, and verify that the values of widget properties are correct.
+// Basic Flutter widget test for Bhilwara Turf App
 
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-
-import 'package:bhilwara_turf/main.dart';
+import 'package:bhilwara_turf/models/turf_model.dart';
 
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
-    await tester.pumpWidget(const BhilwaraTurfApp());
+  group('TurfModel Tests', () {
+    test('TurfModel creates correctly', () {
+      final turf = TurfModel(
+        id: '1',
+        name: 'Test Turf',
+        location: 'Test Location',
+        sports: ['Cricket'],
+        pricePerHour: 500.0,
+        rating: 4.5,
+        reviewCount: 10,
+        description: 'Test description',
+        amenities: ['Parking', 'Lights'],
+        openTime: '06:00',
+        closeTime: '23:00',
+        images: ['test.jpg'],
+      );
 
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
+      expect(turf.id, '1');
+      expect(turf.name, 'Test Turf');
+      expect(turf.pricePerHour, 500.0);
+      expect(turf.rating, 4.5);
+      expect(turf.amenities.length, 2);
+      expect(turf.sports.contains('Cricket'), true);
+    });
 
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
-    await tester.pump();
+    test('getDummyTurfs returns list of turfs', () {
+      final turfs = TurfModel.getDummyTurfs();
+      
+      expect(turfs.isNotEmpty, true);
+      expect(turfs.length, 6);
+      expect(turfs.first.name, 'Green Arena Sports Complex');
+    });
 
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
+    test('getTimeSlots returns valid time slots', () {
+      final slots = TurfModel.getTimeSlots();
+      
+      expect(slots.isNotEmpty, true);
+      expect(slots.first, '06:00');
+      expect(slots.last, '23:00');
+    });
   });
 }
