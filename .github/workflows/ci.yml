@@ -1,0 +1,134 @@
+# =============================================================================
+# Flutter CI Pipeline - Pull Request Validation
+# =============================================================================
+# Purpose: Validate code quality and build artifacts on PRs to master
+# Does NOT auto-deploy - manual deployment required
+# =============================================================================
+
+name: Flutter CI
+
+on:
+  pull_request:
+    branches: 
+      - master
+
+# Cancel in-progress runs when new commit is pushed
+concurrency:
+  group: ci-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  # ===========================================================================
+  # Code Quality & Testing
+  # ===========================================================================
+  validate:
+    name: Validate Code
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+      
+      - name: 🔧 Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.24.0'
+          channel: 'stable'
+          cache: true
+      
+      - name: 📦 Get dependencies
+        run: flutter pub get
+      
+      - name: 🔬 Analyze code
+        run: flutter analyze --fatal-infos --fatal-warnings
+      
+      - name: 🧪 Run tests
+        run: flutter test
+
+  # ===========================================================================
+  # Build Android
+  # ===========================================================================
+  build-android:
+    name: Build Android
+    needs: validate
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+      
+      - name: ☕ Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+          cache: 'gradle'
+      
+      - name: 🔧 Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.24.0'
+          channel: 'stable'
+          cache: true
+      
+      - name: 📦 Get dependencies
+        run: flutter pub get
+      
+      - name: 🏗️ Build APK
+        run: flutter build apk --release
+      
+      - name: 📦 Build App Bundle
+        run: flutter build appbundle --release
+      
+      - name: 📤 Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-apk
+          path: build/app/outputs/flutter-apk/app-release.apk
+          retention-days: 30
+      
+      - name: 📤 Upload App Bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-appbundle
+          path: build/app/outputs/bundle/release/app-release.aab
+          retention-days: 30
+
+  # ===========================================================================
+  # Build iOS
+  # ===========================================================================
+  build-ios:
+    name: Build iOS
+    needs: validate
+    runs-on: macos-latest
+    timeout-minutes: 45
+    
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+      
+      - name: 🔧 Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.24.0'
+          channel: 'stable'
+          cache: true
+      
+      - name: 📦 Get dependencies
+        run: flutter pub get
+      
+      - name: 📦 Install CocoaPods
+        working-directory: ios
+        run: pod install
+      
+      - name: 🏗️ Build iOS (no codesign)
+        run: flutter build ios --release --no-codesign
+      
+      - name: 📤 Upload iOS build
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-build
+          path: build/ios/iphoneos/
+          retention-days: 30

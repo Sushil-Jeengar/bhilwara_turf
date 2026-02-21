@@ -15,7 +15,9 @@ class BhilwaraTurfApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Bhilwara Turf',
-      theme: AppTheme.darkTheme,
+      theme: AppTheme.lightTheme,
+      darkTheme: AppTheme.darkTheme,
+      themeMode: ThemeMode.system, // Follows device light/dark mode setting
       debugShowCheckedModeBanner: false,
       home: const SplashScreen(),
       routes: {

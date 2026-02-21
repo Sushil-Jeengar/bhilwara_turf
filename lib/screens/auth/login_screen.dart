@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../../utils/app_theme.dart';
+import '../../utils/app_colors.dart';
 import 'signup_screen.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -11,11 +11,9 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  final _formKey = GlobalKey<FormState>();
-  final _phoneController = TextEditingController();
-  final _otpController = TextEditingController();
-  bool _isOtpSent = false;
-  bool _isLoading = false;
+  final TextEditingController _phoneController = TextEditingController();
+  final TextEditingController _otpController = TextEditingController();
+  bool _otpSent = false;
 
   @override
   void dispose() {
@@ -25,264 +23,140 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> _sendOtp() async {
-    if (_formKey.currentState!.validate()) {
-      setState(() {
-        _isLoading = true;
-      });
-
-      // Simulate OTP sending
-      await Future.delayed(const Duration(seconds: 2));
-
-      setState(() {
-        _isLoading = false;
-        _isOtpSent = true;
-      });
-
+    if (_phoneController.text.length < 10) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('OTP sent to your phone number'),
-          backgroundColor: AppTheme.primaryGreen,
-        ),
+        const SnackBar(content: Text('Please enter a valid phone number')),
       );
+      return;
     }
+    setState(() => _otpSent = true);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: const Text('OTP sent successfully!'), backgroundColor: AppColors.of(context).primary),
+    );
   }
 
   Future<void> _verifyOtp() async {
-    if (_otpController.text.length == 6) {
-      setState(() {
-        _isLoading = true;
-      });
-
-      // Simulate OTP verification
-      await Future.delayed(const Duration(seconds: 2));
-
-      // Save login state
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setBool('isLoggedIn', true);
-      await prefs.setString('userPhone', _phoneController.text);
-
-      setState(() {
-        _isLoading = false;
-      });
-
-      if (mounted) {
-        Navigator.pushReplacementNamed(context, '/main');
-      }
-    } else {
+    if (_otpController.text.length < 6) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please enter valid 6-digit OTP'),
-          backgroundColor: Colors.red,
-        ),
+        const SnackBar(content: Text('Please enter a valid 6-digit OTP')),
       );
+      return;
     }
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('isLoggedIn', true);
+    await prefs.setString('userPhone', _phoneController.text);
+    if (!mounted) return;
+    Navigator.pushReplacementNamed(context, '/main');
   }
 
   @override
   Widget build(BuildContext context) {
+    final c = AppColors.of(context);
     return Scaffold(
-      backgroundColor: AppTheme.backgroundColor,
+      backgroundColor: c.background,
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const SizedBox(height: 40),
-                
-                // Header
-                RichText(
-                  text: const TextSpan(
-                    children: [
-                      TextSpan(
-                        text: 'Welcome to\n',
-                        style: TextStyle(
-                          fontSize: 28,
-                          color: AppTheme.textPrimary,
-                        ),
-                      ),
-                      TextSpan(
-                        text: 'Bhilwara',
-                        style: TextStyle(
-                          fontSize: 32,
-                          fontWeight: FontWeight.bold,
-                          color: AppTheme.textPrimary,
-                        ),
-                      ),
-                      TextSpan(
-                        text: 'Turf',
-                        style: TextStyle(
-                          fontSize: 32,
-                          fontWeight: FontWeight.bold,
-                          color: AppTheme.primaryGreen,
-                        ),
-                      ),
-                    ],
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const SizedBox(height: 60),
+              Center(
+                child: Container(
+                  width: 80, height: 80,
+                  decoration: BoxDecoration(color: c.primary.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(20)),
+                  child: Icon(Icons.sports_soccer, size: 44, color: c.primary),
+                ),
+              ),
+              const SizedBox(height: 32),
+              Center(child: Text('Welcome Back', style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: c.textPrimary))),
+              const SizedBox(height: 8),
+              Center(child: Text('Login to book your favourite turf', style: TextStyle(fontSize: 15, color: c.textSecondary))),
+              const SizedBox(height: 40),
+
+              Text('Phone Number', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: c.textPrimary)),
+              const SizedBox(height: 8),
+              TextField(
+                controller: _phoneController,
+                keyboardType: TextInputType.phone,
+                style: TextStyle(color: c.textPrimary, fontSize: 16),
+                decoration: InputDecoration(
+                  hintText: 'Enter your phone number', hintStyle: TextStyle(color: c.textHint),
+                  prefixIcon: Icon(Icons.phone_outlined, color: c.textSecondary),
+                  filled: true, fillColor: c.inputFill,
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide(color: c.cardBorder)),
+                  enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide(color: c.cardBorder)),
+                  focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide(color: c.primary, width: 1.5)),
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              if (_otpSent) ...[
+                Text('OTP', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: c.textPrimary)),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: _otpController,
+                  keyboardType: TextInputType.number, maxLength: 6,
+                  style: TextStyle(color: c.textPrimary, fontSize: 16, letterSpacing: 8), textAlign: TextAlign.center,
+                  decoration: InputDecoration(
+                    hintText: '------', hintStyle: TextStyle(color: c.textHint, letterSpacing: 8), counterText: '',
+                    filled: true, fillColor: c.inputFill,
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide(color: c.cardBorder)),
+                    enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide(color: c.cardBorder)),
+                    focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide(color: c.primary, width: 1.5)),
                   ),
                 ),
                 const SizedBox(height: 8),
-                const Text(
-                  'Book your perfect sports experience',
-                  style: TextStyle(
-                    fontSize: 16,
-                    color: AppTheme.textSecondary,
-                  ),
-                ),
-                
-                const SizedBox(height: 60),
-                
-                // Phone Number Field
-                const Text(
-                  'Phone Number',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: AppTheme.textPrimary,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                TextFormField(
-                  controller: _phoneController,
-                  keyboardType: TextInputType.phone,
-                  enabled: !_isOtpSent,
-                  decoration: const InputDecoration(
-                    hintText: 'Enter your phone number',
-                    prefixIcon: Icon(Icons.phone, color: AppTheme.primaryGreen),
-                  ),
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Please enter your phone number';
-                    }
-                    if (value.length != 10) {
-                      return 'Please enter valid 10-digit phone number';
-                    }
-                    return null;
-                  },
-                ),
-                
-                const SizedBox(height: 24),
-                
-                // OTP Field (shown after OTP is sent)
-                if (_isOtpSent) ...[
-                  const Text(
-                    'Enter OTP',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: AppTheme.textPrimary,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  TextFormField(
-                    controller: _otpController,
-                    keyboardType: TextInputType.number,
-                    maxLength: 6,
-                    decoration: const InputDecoration(
-                      hintText: 'Enter 6-digit OTP',
-                      prefixIcon: Icon(Icons.security, color: AppTheme.primaryGreen),
-                      counterText: '',
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                ],
-                
-                // Login Button
-                SizedBox(
-                  width: double.infinity,
-                  height: 56,
-                  child: ElevatedButton(
-                    onPressed: _isLoading
-                        ? null
-                        : (_isOtpSent ? _verifyOtp : _sendOtp),
-                    child: _isLoading
-                        ? const CircularProgressIndicator(color: Colors.white)
-                        : Text(_isOtpSent ? 'Verify OTP' : 'Send OTP'),
-                  ),
-                ),
-                
-                const SizedBox(height: 24),
-                
-                // Signup Link
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Text(
-                      "Don't have an account? ",
-                      style: TextStyle(color: AppTheme.textSecondary),
-                    ),
-                    GestureDetector(
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const SignupScreen(),
-                          ),
-                        );
-                      },
-                      child: const Text(
-                        'Sign Up',
-                        style: TextStyle(
-                          color: AppTheme.primaryGreen,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                
-                const Spacer(),
-                
-                // Features
-                Container(
-                  padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    color: AppTheme.cardColor,
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: const Column(
-                    children: [
-                      Row(
-                        children: [
-                          Icon(Icons.check_circle, color: AppTheme.primaryGreen),
-                          SizedBox(width: 12),
-                          Text(
-                            'Instant Booking Confirmation',
-                            style: TextStyle(color: AppTheme.textPrimary),
-                          ),
-                        ],
-                      ),
-                      SizedBox(height: 12),
-                      Row(
-                        children: [
-                          Icon(Icons.check_circle, color: AppTheme.primaryGreen),
-                          SizedBox(width: 12),
-                          Text(
-                            'Best Prices in Bhilwara',
-                            style: TextStyle(color: AppTheme.textPrimary),
-                          ),
-                        ],
-                      ),
-                      SizedBox(height: 12),
-                      Row(
-                        children: [
-                          Icon(Icons.check_circle, color: AppTheme.primaryGreen),
-                          SizedBox(width: 12),
-                          Text(
-                            'Premium Quality Turfs',
-                            style: TextStyle(color: AppTheme.textPrimary),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
               ],
-            ),
+
+              const SizedBox(height: 8),
+              SizedBox(
+                width: double.infinity, height: 52,
+                child: ElevatedButton(
+                  onPressed: _otpSent ? _verifyOtp : _sendOtp,
+                  style: ElevatedButton.styleFrom(backgroundColor: c.primary, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)), elevation: 0),
+                  child: Text(_otpSent ? 'Verify OTP' : 'Send OTP', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.white)),
+                ),
+              ),
+              const SizedBox(height: 24),
+
+              Center(
+                child: GestureDetector(
+                  onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SignupScreen())),
+                  child: RichText(
+                    text: TextSpan(children: [
+                      TextSpan(text: "Don't have an account? ", style: TextStyle(color: c.textSecondary, fontSize: 14)),
+                      TextSpan(text: 'Sign Up', style: TextStyle(color: c.primary, fontSize: 14, fontWeight: FontWeight.w600)),
+                    ]),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 48),
+
+              _buildFeatureRow(Icons.flash_on, 'Instant Booking', 'Book your slot in seconds', c),
+              const SizedBox(height: 16),
+              _buildFeatureRow(Icons.verified_user, 'Verified Turfs', 'All turfs quality-checked', c),
+              const SizedBox(height: 16),
+              _buildFeatureRow(Icons.access_time, '24/7 Available', 'Book anytime, play anytime', c),
+            ],
           ),
         ),
       ),
     );
+  }
+
+  Widget _buildFeatureRow(IconData icon, String title, String subtitle, AppColors c) {
+    return Row(children: [
+      Container(
+        width: 44, height: 44,
+        decoration: BoxDecoration(color: c.primary.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(12)),
+        child: Icon(icon, color: c.primary, size: 22),
+      ),
+      const SizedBox(width: 14),
+      Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text(title, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: c.textPrimary)),
+        Text(subtitle, style: TextStyle(fontSize: 13, color: c.textSecondary)),
+      ]),
+    ]);
   }
 }
