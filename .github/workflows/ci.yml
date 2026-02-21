@@ -1,9 +1,7 @@
 # =============================================================================
 # Flutter CI/CD Pipeline - Production Grade
 # =============================================================================
-# Purpose: Validate code quality and build artifacts on all branches
-# Strategy: Debug builds for all branches, Release builds for master/main only
-# Does NOT auto-deploy - manual deployment required
+# Purpose: Validate code quality on all merged branches
 # =============================================================================
 
 name: Flutter CI/CD
@@ -24,24 +22,21 @@ concurrency:
 
 jobs:
   # ===========================================================================
-  # Stage 1: Code Quality & Testing (Runs on ALL branches)
+  # Stage 1: Code Quality & Testing
   # ===========================================================================
   validate:
     name: Code Validation
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    # This ensures the pipeline ONLY runs if the PR was actually merged,
-    # or if you triggered it manually via the Actions tab.
+    # This ensures the pipeline ONLY runs if the PR was actually merged
     if: github.event.pull_request.merged == true || github.event_name == 'workflow_dispatch'
 
     steps:
-      # Checkout repository
       - name: 📥 Checkout repository
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      # Setup Flutter with caching
       - name: 🔧 Setup Flutter SDK
         uses: subosito/flutter-action@v2
         with:
@@ -49,7 +44,6 @@ jobs:
           cache: true
           cache-key: 'flutter-:os:-:channel:-:version:-:arch:'
 
-      # Cache pub dependencies
       - name: 📦 Cache pub dependencies
         uses: actions/cache@v4
         with:
@@ -60,23 +54,18 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-pub-
 
-      # Get dependencies
       - name: 📦 Install dependencies
         run: flutter pub get
 
-      # Verify dependencies
       - name: ✅ Verify dependencies
         run: flutter pub get --offline
 
-      # Run static analysis (fail on warnings)
       - name: 🔬 Run static analysis
         run: flutter analyze --fatal-infos --fatal-warnings
 
-      # Run all tests
       - name: 🧪 Run unit tests
         run: flutter test --coverage --reporter expanded
 
-      # Upload test coverage
       - name: 📊 Upload coverage report
         if: success()
         uses: actions/upload-artifact@v4
@@ -86,220 +75,11 @@ jobs:
           retention-days: 7
 
   # ===========================================================================
-  # Stage 2: Debug Build (Runs on ALL branches except master/main)
-  # ===========================================================================
-  build-debug:
-    name: Debug Build
-    needs: validate
-    if: github.ref != 'refs/heads/master' && github.ref != 'refs/heads/main'
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-
-    steps:
-      - name: 📥 Checkout repository
-        uses: actions/checkout@v4
-
-      - name: ☕ Setup Java 17
-        uses: actions/setup-java@v4
-        with:
-          distribution: 'zulu'
-          java-version: '17'
-          cache: 'gradle'
-
-      - name: 🔧 Setup Flutter SDK
-        uses: subosito/flutter-action@v2
-        with:
-          channel: 'stable'
-          cache: true
-
-      - name: 📦 Install dependencies
-        run: flutter pub get
-
-      - name: 🏗️ Build debug APK
-        run: flutter build apk --debug
-
-      - name: 📤 Upload debug APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: android-debug-apk
-          path: build/app/outputs/flutter-apk/app-debug.apk
-          retention-days: 7
-
-  # ===========================================================================
-  # Stage 3: Production Release Build (Runs ONLY on master/main)
-  # ===========================================================================
-  build-release-android:
-    name: Release Build - Android
-    needs: validate
-    if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-
-    steps:
-      - name: 📥 Checkout repository
-        uses: actions/checkout@v4
-
-      - name: ☕ Setup Java 17
-        uses: actions/setup-java@v4
-        with:
-          distribution: 'zulu'
-          java-version: '17'
-          cache: 'gradle'
-
-      - name: 🔧 Setup Flutter SDK
-        uses: subosito/flutter-action@v2
-        with:
-          channel: 'stable'
-          cache: true
-
-      - name: 📦 Cache pub dependencies
-        uses: actions/cache@v4
-        with:
-          path: |
-            ${{ env.PUB_CACHE }}
-            ~/.pub-cache
-          key: ${{ runner.os }}-pub-${{ hashFiles('**/pubspec.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-pub-
-
-      - name: 📦 Install dependencies
-        run: flutter pub get
-
-      # Setup Android signing (if secrets are available)
-      - name: 🔐 Setup Android keystore
-        if: env.ANDROID_KEYSTORE_BASE64 != ''
-        env:
-          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
-          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
-          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
-        run: |
-          echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > android/app/keystore.jks
-          cat > android/key.properties << EOF
-          storePassword=$KEYSTORE_PASSWORD
-          keyPassword=$KEY_PASSWORD
-          keyAlias=$KEY_ALIAS
-          storeFile=keystore.jks
-          EOF
-
-      - name: 🏗️ Build release APK
-        run: flutter build apk --release --split-per-abi
-
-      - name: 📦 Build release App Bundle
-        run: flutter build appbundle --release
-
-      # Cleanup sensitive files
-      - name: 🧹 Cleanup keystore
-        if: always()
-        run: |
-          rm -f android/app/keystore.jks
-          rm -f android/key.properties
-
-      - name: 📤 Upload release APKs
-        uses: actions/upload-artifact@v4
-        with:
-          name: android-release-apks
-          path: build/app/outputs/flutter-apk/*.apk
-          retention-days: 30
-
-      - name: 📤 Upload release App Bundle
-        uses: actions/upload-artifact@v4
-        with:
-          name: android-release-aab
-          path: build/app/outputs/bundle/release/app-release.aab
-          retention-days: 30
-
-  build-release-ios:
-    name: Release Build - iOS
-    needs: validate
-    if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/main'
-    runs-on: macos-latest
-    timeout-minutes: 45
-
-    steps:
-      - name: 📥 Checkout repository
-        uses: actions/checkout@v4
-
-      - name: 🔧 Setup Flutter SDK
-        uses: subosito/flutter-action@v2
-        with:
-          channel: 'stable'
-          cache: true
-
-      - name: 📦 Cache pub dependencies
-        uses: actions/cache@v4
-        with:
-          path: |
-            ${{ env.PUB_CACHE }}
-            ~/.pub-cache
-          key: ${{ runner.os }}-pub-${{ hashFiles('**/pubspec.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-pub-
-
-      - name: 📦 Install dependencies
-        run: flutter pub get
-
-      - name: 📦 Install CocoaPods dependencies
-        working-directory: ios
-        run: |
-          pod repo update
-          pod install
-
-      - name: 🍏 Setup Xcode
-        uses: maxim-lobanov/setup-xcode@v1
-        with:
-          xcode-version: 'latest-stable'
-
-      # Import iOS certificates (if available)
-      - name: 🔐 Import iOS certificates
-        if: env.IOS_CERTIFICATE_BASE64 != ''
-        env:
-          IOS_CERTIFICATE_BASE64: ${{ secrets.IOS_CERTIFICATE_BASE64 }}
-          IOS_CERTIFICATE_PASSWORD: ${{ secrets.IOS_CERTIFICATE_PASSWORD }}
-          IOS_PROVISION_PROFILE_BASE64: ${{ secrets.IOS_PROVISION_PROFILE_BASE64 }}
-        run: |
-          # Create temporary keychain
-          KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
-          KEYCHAIN_PASSWORD=$(openssl rand -base64 32)
-          
-          security create-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
-          security set-keychain-settings -lut 21600 $KEYCHAIN_PATH
-          security unlock-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
-          
-          # Import certificate
-          CERTIFICATE_PATH=$RUNNER_TEMP/certificate.p12
-          echo "$IOS_CERTIFICATE_BASE64" | base64 -d > $CERTIFICATE_PATH
-          security import $CERTIFICATE_PATH -P "$IOS_CERTIFICATE_PASSWORD" -A -t cert -f pkcs12 -k $KEYCHAIN_PATH
-          security list-keychain -d user -s $KEYCHAIN_PATH
-          
-          # Import provisioning profile
-          mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
-          echo "$IOS_PROVISION_PROFILE_BASE64" | base64 -d > ~/Library/MobileDevice/Provisioning\ Profiles/profile.mobileprovision
-
-      - name: 🏗️ Build iOS release (no codesign)
-        run: flutter build ios --release --no-codesign
-
-      # Cleanup keychain
-      - name: 🧹 Cleanup keychain
-        if: always()
-        run: |
-          if [ -f "$RUNNER_TEMP/app-signing.keychain-db" ]; then
-            security delete-keychain $RUNNER_TEMP/app-signing.keychain-db
-          fi
-
-      - name: 📤 Upload iOS build
-        uses: actions/upload-artifact@v4
-        with:
-          name: ios-release-build
-          path: build/ios/iphoneos/
-          retention-days: 30
-
-  # ===========================================================================
-  # Stage 4: Build Summary
+  # Stage 2: Build Summary
   # ===========================================================================
   summary:
     name: Build Summary
-    needs: [validate, build-debug, build-release-android, build-release-ios]
+    needs: [validate]
     if: always()
     runs-on: ubuntu-latest
 
@@ -314,6 +94,3 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Job Status:" >> $GITHUB_STEP_SUMMARY
           echo "- Validation: ${{ needs.validate.result }}" >> $GITHUB_STEP_SUMMARY
-          echo "- Debug Build: ${{ needs.build-debug.result }}" >> $GITHUB_STEP_SUMMARY
-          echo "- Android Release: ${{ needs.build-release-android.result }}" >> $GITHUB_STEP_SUMMARY
-          echo "- iOS Release: ${{ needs.build-release-ios.result }}" >> $GITHUB_STEP_SUMMARY
