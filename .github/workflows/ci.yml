@@ -9,16 +9,11 @@
 name: Flutter CI/CD
 
 on:
-  # Trigger on push to any branch
-  push:
-    branches:
-      - '**'
-  
-  # Trigger on pull request to any branch
   pull_request:
+    types: [closed]
     branches:
       - '**'
-  
+
   # Allow manual trigger
   workflow_dispatch:
 
@@ -35,23 +30,26 @@ jobs:
     name: Code Validation
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    
+    # This ensures the pipeline ONLY runs if the PR was actually merged,
+    # or if you triggered it manually via the Actions tab.
+    if: github.event.pull_request.merged == true || github.event_name == 'workflow_dispatch'
+
     steps:
       # Checkout repository
       - name: 📥 Checkout repository
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      
+
       # Setup Flutter with caching
       - name: 🔧 Setup Flutter SDK
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.24.0'
+          flutter-version: '3.36.0' # Updated to 3.36.0
           channel: 'stable'
           cache: true
           cache-key: 'flutter-:os:-:channel:-:version:-:arch:'
-      
+
       # Cache pub dependencies
       - name: 📦 Cache pub dependencies
         uses: actions/cache@v4
@@ -62,23 +60,23 @@ jobs:
           key: ${{ runner.os }}-pub-${{ hashFiles('**/pubspec.lock') }}
           restore-keys: |
             ${{ runner.os }}-pub-
-      
+
       # Get dependencies
       - name: 📦 Install dependencies
         run: flutter pub get
-      
+
       # Verify dependencies
       - name: ✅ Verify dependencies
         run: flutter pub get --offline
-      
+
       # Run static analysis (fail on warnings)
       - name: 🔬 Run static analysis
         run: flutter analyze --fatal-infos --fatal-warnings
-      
+
       # Run all tests
       - name: 🧪 Run unit tests
         run: flutter test --coverage --reporter expanded
-      
+
       # Upload test coverage
       - name: 📊 Upload coverage report
         if: success()
@@ -97,31 +95,31 @@ jobs:
     if: github.ref != 'refs/heads/master' && github.ref != 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    
+
     steps:
       - name: 📥 Checkout repository
         uses: actions/checkout@v4
-      
+
       - name: ☕ Setup Java 17
         uses: actions/setup-java@v4
         with:
           distribution: 'zulu'
           java-version: '17'
           cache: 'gradle'
-      
+
       - name: 🔧 Setup Flutter SDK
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.24.0'
+          flutter-version: '3.36.0' # Updated to 3.36.0
           channel: 'stable'
           cache: true
-      
+
       - name: 📦 Install dependencies
         run: flutter pub get
-      
+
       - name: 🏗️ Build debug APK
         run: flutter build apk --debug
-      
+
       - name: 📤 Upload debug APK
         uses: actions/upload-artifact@v4
         with:
@@ -138,25 +136,25 @@ jobs:
     if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    
+
     steps:
       - name: 📥 Checkout repository
         uses: actions/checkout@v4
-      
+
       - name: ☕ Setup Java 17
         uses: actions/setup-java@v4
         with:
           distribution: 'zulu'
           java-version: '17'
           cache: 'gradle'
-      
+
       - name: 🔧 Setup Flutter SDK
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.24.0'
+          flutter-version: '3.36.0' # Updated to 3.36.0
           channel: 'stable'
           cache: true
-      
+
       - name: 📦 Cache pub dependencies
         uses: actions/cache@v4
         with:
@@ -166,10 +164,10 @@ jobs:
           key: ${{ runner.os }}-pub-${{ hashFiles('**/pubspec.lock') }}
           restore-keys: |
             ${{ runner.os }}-pub-
-      
+
       - name: 📦 Install dependencies
         run: flutter pub get
-      
+
       # Setup Android signing (if secrets are available)
       - name: 🔐 Setup Android keystore
         if: env.ANDROID_KEYSTORE_BASE64 != ''
@@ -186,27 +184,27 @@ jobs:
           keyAlias=$KEY_ALIAS
           storeFile=keystore.jks
           EOF
-      
+
       - name: 🏗️ Build release APK
         run: flutter build apk --release --split-per-abi
-      
+
       - name: 📦 Build release App Bundle
         run: flutter build appbundle --release
-      
+
       # Cleanup sensitive files
       - name: 🧹 Cleanup keystore
         if: always()
         run: |
           rm -f android/app/keystore.jks
           rm -f android/key.properties
-      
+
       - name: 📤 Upload release APKs
         uses: actions/upload-artifact@v4
         with:
           name: android-release-apks
           path: build/app/outputs/flutter-apk/*.apk
           retention-days: 30
-      
+
       - name: 📤 Upload release App Bundle
         uses: actions/upload-artifact@v4
         with:
@@ -220,18 +218,18 @@ jobs:
     if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/main'
     runs-on: macos-latest
     timeout-minutes: 45
-    
+
     steps:
       - name: 📥 Checkout repository
         uses: actions/checkout@v4
-      
+
       - name: 🔧 Setup Flutter SDK
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.24.0'
+          flutter-version: '3.36.0' # Updated to 3.36.0
           channel: 'stable'
           cache: true
-      
+
       - name: 📦 Cache pub dependencies
         uses: actions/cache@v4
         with:
@@ -241,21 +239,21 @@ jobs:
           key: ${{ runner.os }}-pub-${{ hashFiles('**/pubspec.lock') }}
           restore-keys: |
             ${{ runner.os }}-pub-
-      
+
       - name: 📦 Install dependencies
         run: flutter pub get
-      
+
       - name: 📦 Install CocoaPods dependencies
         working-directory: ios
         run: |
           pod repo update
           pod install
-      
-      - name: � Setup Xcode
+
+      - name: 🍏 Setup Xcode
         uses: maxim-lobanov/setup-xcode@v1
         with:
           xcode-version: 'latest-stable'
-      
+
       # Import iOS certificates (if available)
       - name: 🔐 Import iOS certificates
         if: env.IOS_CERTIFICATE_BASE64 != ''
@@ -281,10 +279,10 @@ jobs:
           # Import provisioning profile
           mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
           echo "$IOS_PROVISION_PROFILE_BASE64" | base64 -d > ~/Library/MobileDevice/Provisioning\ Profiles/profile.mobileprovision
-      
+
       - name: 🏗️ Build iOS release (no codesign)
         run: flutter build ios --release --no-codesign
-      
+
       # Cleanup keychain
       - name: 🧹 Cleanup keychain
         if: always()
@@ -292,14 +290,14 @@ jobs:
           if [ -f "$RUNNER_TEMP/app-signing.keychain-db" ]; then
             security delete-keychain $RUNNER_TEMP/app-signing.keychain-db
           fi
-      
+
       - name: 📤 Upload iOS build
         uses: actions/upload-artifact@v4
         with:
           name: ios-release-build
           path: build/ios/iphoneos/
           retention-days: 30
-  
+
   # ===========================================================================
   # Stage 4: Build Summary
   # ===========================================================================
@@ -308,7 +306,7 @@ jobs:
     needs: [validate, build-debug, build-release-android, build-release-ios]
     if: always()
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: 📋 Generate summary
         run: |
